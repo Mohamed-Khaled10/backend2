@@ -29,3 +29,88 @@ const verifyToken = (req, res, next) => {
         next()
     })
 }
+server.post('/user/login', (req, res) => {
+    const email = req.body.email
+    const password = req.body.password
+    db.get(`SELECT * FROM USER WHERE email=?  `, [email], (err, row) => {
+        bcrypt.compare(password, row.PASSWORD, (err, isMatch) => {
+            if (err) {
+                return res.status(500).send('password doesnt match.')
+            }
+            if (!isMatch) {
+                return res.status(401).send('invalid credentials')
+            }
+            else {
+                let userid = row.id
+                let is_admin = row.is_admin
+                const token = generateToken(userid, is_admin)
+
+                res.cookie('authToken', token, {
+                    httpOnly: true,
+                    sameSite: 'none',
+                    secure:true,
+                    expiresIn: '1h'
+                })
+                return res.status(200).json({ id: userid, admin: is_admin })
+            }
+        })
+    })
+})
+
+server.post(`/user/register`, (req, res) => {
+    const name = req.body.name
+    const email = req.body.email
+    const password = req.body.password
+    bcrypt.hash(password, 10, (err, hashedPassword) => {
+        if (err) {
+            return res.status(500).send('error hashing password')
+        }
+        db.run(`INSERT INTO USER (name,email,password,is_admin) VALUES (?,?,?,?)`, [name, email, hashedPassword, 0], (err) => {
+            if (err) {
+
+                return res.status(401).send(err)
+            }
+            else
+                return res.status(200).send(`registration successfull`)
+        })
+    })
+})
+
+server.post(`/court/addcourt`, verifyToken, (req, res) => {
+    const is_admin = req.userDetails.is_admin;
+    if (is_admin !== 1)
+        return res.status(403).send("invalid admin registration")
+    const name = req.body.name
+    const location = req.body.location
+    const price = req.body.price
+    const phonenum = req.body.phonenum
+    const court_amenities = req.body.court_amenities
+    let query = `INSERT INTO COURT (name,location,price,phonenum,court_amenities) VALUES
+    (?,?,?,?,?)`
+    db.run(query, [name, location, price, phonenum, court_amenities], (err) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else {
+            return res.send(`court added successfully`)
+        }
+    })
+
+})
+server.get(`/court`, verifyToken, (req, res) => {
+    const is_admin = req.userDetails.is_admin;
+    if (is_admin !== 1)
+        return res.status(403).send("invalid admin registration")
+    const query = `SELECT * FROM COURT`
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else {
+            return res.json(rows)
+        }
+    })
+})
+
