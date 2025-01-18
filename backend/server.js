@@ -114,3 +114,55 @@ server.get(`/court`, verifyToken, (req, res) => {
     })
 })
 
+server.get(`/court/search/:id`, (req, res) => {
+    const query = `SELECT * FROM COURT WHERE ID=${req.params.id}`
+    db.get(query, (err, row) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else if (!row)
+            return res.send(`court with id ${req.params.id} not found`)
+        else
+            return res.send(row)
+    })
+})
+
+server.put(`/court/edit/:id/:quantity`, verifyToken, (req, res) => {
+    const is_admin = req.userDetails.is_admin;
+    if (is_admin !== 1)
+        return res.status(403).send("you are not an admin")
+    const query = `UPDATE COURT SET QUANTITY=${parseInt(req.params.quantity, 10)}
+    WHERE ID=${req.params.id}`
+
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else {
+            return res.send(`court updated successfully`)
+        }
+    })
+})
+
+server.listen(port, () => {
+    console.log(`server started at port ${port}`)
+    db.serialize(() => {
+        db.run(db_access.createUserTable, (err) => {
+            if (err)
+                console.log("error creating user table " + err)
+        });
+        db.run(db_access.createCourtTable, (err) => {
+            if (err)
+                console.log("error creating court table " + err)
+        });
+        db.run(db_access.createBookingTable, (err) => {
+            if (err)
+                console.log("error creating booking table " + err)
+        });
+    })
+
+
+
+})
