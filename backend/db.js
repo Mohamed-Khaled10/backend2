@@ -14,7 +14,8 @@ name TEXT NOT NULL,
 location TEXT NOT NULL,
 price REAL NOT NULL,
 phonenum TEXT NOT NULL,
-court_amenities TEXT NOT NULL)`
+court_amenities TEXT NOT NULL,
+quantity INT NOT NULL)`
 
 const createBookingTable  = `CREATE TABLE IF NOT EXISTS BOOKING(
 id INTEGER PRIMARY KEY AUTOINCREMENT,

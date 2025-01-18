@@ -85,9 +85,10 @@ server.post(`/court/addcourt`, verifyToken, (req, res) => {
     const price = req.body.price
     const phonenum = req.body.phonenum
     const court_amenities = req.body.court_amenities
-    let query = `INSERT INTO COURT (name,location,price,phonenum,court_amenities) VALUES
-    (?,?,?,?,?)`
-    db.run(query, [name, location, price, phonenum, court_amenities], (err) => {
+    const quantity = parseInt(req.body.quantity, 10)
+    let query = `INSERT INTO COURT (name,location,price,phonenum,court_amenities,quantity) VALUES
+    (?,?,?,?,?,?)`
+    db.run(query, [name, location, price, phonenum, court_amenities, quantity], (err) => {
         if (err) {
             console.log(err)
             return res.send(err)
@@ -98,6 +99,7 @@ server.post(`/court/addcourt`, verifyToken, (req, res) => {
     })
 
 })
+
 server.get(`/court`, verifyToken, (req, res) => {
     const is_admin = req.userDetails.is_admin;
     if (is_admin !== 1)
@@ -115,7 +117,7 @@ server.get(`/court`, verifyToken, (req, res) => {
 })
 
 server.get(`/court/search/:id`, (req, res) => {
-    const query = `SELECT * FROM COURT WHERE ID=${req.params.id}`
+    const query = `SELECT * FROM COURT WHERE id=${req.params.id}`
     db.get(query, (err, row) => {
         if (err) {
             console.log(err)
@@ -132,8 +134,8 @@ server.put(`/court/edit/:id/:quantity`, verifyToken, (req, res) => {
     const is_admin = req.userDetails.is_admin;
     if (is_admin !== 1)
         return res.status(403).send("you are not an admin")
-    const query = `UPDATE COURT SET QUANTITY=${parseInt(req.params.quantity, 10)}
-    WHERE ID=${req.params.id}`
+    const query = `UPDATE COURT SET quantity=${parseInt(req.params.quantity, 10)}
+    WHERE id=${req.params.id}`
 
     db.run(query, (err) => {
         if (err) {
@@ -145,6 +147,99 @@ server.put(`/court/edit/:id/:quantity`, verifyToken, (req, res) => {
         }
     })
 })
+
+server.delete('/court/delete/:id', verifyToken, (req, res) => {
+    const is_admin = req.userDetails.is_admin
+    if (is_admin !== 1) {
+        return res.status(403).send("You are not an admin")
+    }
+
+    const courtId = req.params.id;
+    const query = `DELETE FROM COURT WHERE id=?`
+
+    db.run(query, [courtId], function (err) {
+        if (err) {
+            console.log(err);
+            return res.status(500).send(err);
+        }
+        if (this.changes === 0) {
+            return res.status(404).send(`Court with id ${courtId} not found`);
+        }
+        return res.send(`Court with id ${courtId} deleted successfully`);
+    })
+})
+
+server.get(`/court/search`, (req, res) => {
+    let name = req.query.name
+    let location = req.query.location
+    let query = `SELECT * FROM COURT WHERE quantity>0`
+    if (name)
+        query += ` AND name='${name}'`
+    if (locarion)
+        query += ` AND location='${location}'`
+
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else {
+            return res.json(rows)
+        }
+    })
+
+})
+
+server.put(`/book`, verifyToken, (req, res) => {
+    const is_admin = req.userDetails.is_admin;
+    if (is_admin !== 1)
+        return res.status(403).send("You are not an admin");
+
+    let name = req.query.name;
+    let location = req.query.location;
+    let price = req.query.price;
+    
+    let query = `SELECT * FROM COURT WHERE name='${name}' AND location='${location}' AND price='${price}'`;
+
+    db.get(query, (err, row) => {
+        if (err) {
+            console.log(err);
+            return res.send(err);
+        } 
+        else if (!row) {
+            return res.send("Court not found");
+        } 
+        else {
+            let court_id = row.id;
+            let user_id = req.body.user_id;
+            let time = req.body.time;
+            let date = req.body.date;
+
+            let query2 = `INSERT INTO BOOKING (user_id, court_id, time, date) VALUES ('${user_id}', '${court_id}', '${time}', '${date}')`;
+
+            db.run(query2, (err) => {
+                if (err) {
+                    console.log(err);
+                    return res.send(err);
+                } 
+                else {
+                    let quantity = parseInt(row.QUANTITY, 10) - 1;
+                    let updateQuery = `UPDATE COURT SET quantity='${quantity}' WHERE id='${court_id}'`;
+
+                    db.run(updateQuery, (err) => {
+                        if (err) {
+                            console.log(err);
+                            return res.send(err);
+                        }
+                        else
+                            res.send(`Court booked successfully`);
+                    });
+                }
+            });
+        }
+    });
+});
+
 
 server.listen(port, () => {
     console.log(`server started at port ${port}`)
