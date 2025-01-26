@@ -24,7 +24,7 @@ court_id INT NOT NULL,
 time TEXT NOT NULL,
 date TEXT NOT NULL,
 FOREIGN KEY (user_id) REFERENCES USER(id),
-FOREIGN KEY (court_id) REFERENCES COURT(id))`
+FOREIGN KEY (court_id) REFERENCES COURT(id))`hh
 
 module.exports={db,createUserTable,createCourtTable,createBookingTable}
 
