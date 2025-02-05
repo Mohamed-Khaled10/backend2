@@ -5,6 +5,33 @@ const bcrypt = require('bcrypt')
 const cookieParser = require('cookie-parser')
 const db_access = require('./db.js')
 const db = db_access.db
+
+db.serialize(() => {
+    db.run(db_access.createUserTable, (err) => {
+        if (err) {
+            console.error('Error creating USER table:', err);
+        } else {
+            console.log('USER table created or already exists');
+        }
+    });
+    
+    db.run(db_access.createCourtTable, (err) => {
+        if (err) {
+            console.error('Error creating COURT table:', err);
+        } else {
+            console.log('COURT table created or already exists');
+        }
+    });
+    
+    db.run(db_access.createBookingTable, (err) => {
+        if (err) {
+            console.error('Error creating BOOKING table:', err);
+        } else {
+            console.log('BOOKING table created or already exists');
+        }
+    });
+});
+
 const server = express()
 const port = 555
 const secret_key = 'mrkak789moadrtlkdvcr'
@@ -32,27 +59,31 @@ const verifyToken = (req, res, next) => {
 server.post('/user/login', (req, res) => {
     const email = req.body.email
     const password = req.body.password
-    db.get(`SELECT * FROM USER WHERE email=?  `, [email], (err, row) => {
-        bcrypt.compare(password, row.PASSWORD, (err, isMatch) => {
+    db.get(`SELECT * FROM USER WHERE email=?`, [email], (err, row) => {
+        if (err) {
+            return res.status(500).send('Database error occurred');
+        }
+        if (!row) {
+            return res.status(401).send('User not found');
+        }
+        bcrypt.compare(password, row.password, (err, isMatch) => {
             if (err) {
-                return res.status(500).send('password doesnt match.')
+                return res.status(500).send('Error comparing passwords');
             }
             if (!isMatch) {
-                return res.status(401).send('invalid credentials')
+                return res.status(401).send('Invalid credentials');
             }
-            else {
-                let userid = row.id
-                let is_admin = row.is_admin
-                const token = generateToken(userid, is_admin)
+            let userid = row.id
+            let is_admin = row.is_admin
+            const token = generateToken(userid, is_admin)
 
-                res.cookie('authToken', token, {
-                    httpOnly: true,
-                    sameSite: 'none',
-                    secure:true,
-                    expiresIn: '1h'
-                })
-                return res.status(200).json({ id: userid, admin: is_admin })
-            }
+            res.cookie('authToken', token, {
+                httpOnly: true,
+                sameSite: 'none',
+                secure: true,
+                maxAge: 3600000 // 1 hour in milliseconds
+            })
+            return res.status(200).json({ id: userid, admin: is_admin })
         })
     })
 })
@@ -175,7 +206,7 @@ server.get(`/court/search`, (req, res) => {
     let query = `SELECT * FROM COURT WHERE quantity>0`
     if (name)
         query += ` AND name='${name}'`
-    if (locarion)
+    if (location)
         query += ` AND location='${location}'`
 
     db.all(query, (err, rows) => {
@@ -243,21 +274,4 @@ server.put(`/book`, verifyToken, (req, res) => {
 
 server.listen(port, () => {
     console.log(`server started at port ${port}`)
-    db.serialize(() => {
-        db.run(db_access.createUserTable, (err) => {
-            if (err)
-                console.log("error creating user table " + err)
-        });
-        db.run(db_access.createCourtTable, (err) => {
-            if (err)
-                console.log("error creating court table " + err)
-        });
-        db.run(db_access.createBookingTable, (err) => {
-            if (err)
-                console.log("error creating booking table " + err)
-        });
-    })
-
-
-
 })

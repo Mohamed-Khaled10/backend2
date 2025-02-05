@@ -6,7 +6,7 @@ id INTEGER PRIMARY KEY AUTOINCREMENT,
 name TEXT NOT NULL, 
 email TEXT NOT NULL UNIQUE,
 password TEXT NOT NULL,
-is_admin INT DEFAULT 0 CHECK (is_admin IN (0, 1))`
+is_admin INT DEFAULT 0 CHECK (is_admin IN (0, 1)))`
 
 const createCourtTable  = `CREATE TABLE IF NOT EXISTS COURT(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +24,6 @@ court_id INT NOT NULL,
 time TEXT NOT NULL,
 date TEXT NOT NULL,
 FOREIGN KEY (user_id) REFERENCES USER(id),
-FOREIGN KEY (court_id) REFERENCES COURT(id))`hh
+FOREIGN KEY (court_id) REFERENCES COURT(id))`
 
 module.exports={db,createUserTable,createCourtTable,createBookingTable}
-
